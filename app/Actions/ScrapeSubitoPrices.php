@@ -36,7 +36,7 @@ class ScrapeSubitoPrices
             $data = collect($page
                 ->evaluate($this->getItemsScript())
                 ->getReturnValue());
-
+            dump($data);
             /** @var int $pageHeight */
             $pageHeight = $page->evaluate('document.body.scrollHeight')->getReturnValue();
 
@@ -49,7 +49,7 @@ class ScrapeSubitoPrices
                     ->getReturnValue());
 
                 $data = $data->map(
-                    fn (string $item, int $key) => ! $item ? $items->get($key) : $item
+                    fn (?string $item, int $key) => ! $item ? $items->get($key) : $item
                 );
 
                 sleep(0.3);
@@ -71,6 +71,6 @@ class ScrapeSubitoPrices
 
     private function getItemsScript(): string
     {
-        return "[...document.querySelectorAll('.items__item.item-card')].map(item => item.querySelector('[class*=\"SmallCard-module_item-title\"]').innerText)";
+        return "[...document.querySelectorAll('.items__item.item-card')].map(item => ['item'])";
     }
 }
