@@ -1,20 +1,17 @@
 <?php
 
-namespace App\DTO;
+namespace App\DTO\Items;
 
 use App\Enums\Status;
 use DateTimeInterface;
 
-class SubitoItem
+class BaseItem
 {
     public function __construct(
         public string $title,
         public int $price,
-        public string $place,
+        public string $town,
         public DateTimeInterface $uploadedDateTime,
         public ?Status $status,
-        public ?string $registrationYear,
-        public ?string $km,
-        public ?string $cc,
     ) {}
 }
