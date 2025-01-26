@@ -10,7 +10,9 @@ use HeadlessChromium\Page;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Lorisleiva\Actions\Concerns\AsAction;
+use TypeError;
 
 class ScrapeSubitoPrices
 {
@@ -19,6 +21,8 @@ class ScrapeSubitoPrices
     public string $commandSignature = 'scrape:prices {url} {--head}';
 
     protected bool $headless = true;
+
+    protected Page $page;
 
     public function handle(string $url)
     {
@@ -32,33 +36,36 @@ class ScrapeSubitoPrices
         ]);
 
         try {
-            $page = $browser->createPage();
-            $page->navigate($url)->waitForNavigation();
+            $this->page = $browser->createPage();
+            $this->page->navigate($url)->waitForNavigation();
 
             // Accept Cookie Banner
-            $page->evaluate("document.querySelector('.didomi-continue-without-agreeing').click()");
+            $this->page->evaluate("document.querySelector('.didomi-continue-without-agreeing').click()");
 
-            $items = $this->getEmptyItems($page);
+            // Create empty items collection, to be filled later
+            $items = $this->getEmptyItems();
 
             /** @var int $pageHeight */
-            $pageHeight = $page->evaluate('document.body.scrollHeight')->getReturnValue();
+            $pageHeight = $this->page->evaluate('document.body.scrollHeight')->getReturnValue();
 
             // TODO: Implement pagination
 
+            // Scroll page n times browser inner height, so item infos are retrieved correctly
             for ($i = 1; $i <= ceil($pageHeight / $innerHeight); $i++) {
                 $currentHeight = $innerHeight * $i;
-                $page->evaluate("window.scrollTo(0, $currentHeight)");
+                $this->page->evaluate("window.scrollTo(0, $currentHeight)");
 
                 $data = [
-                    'titles' => $this->getItemTitles($page),
-                    'prices' => $this->getItemPrices($page),
-                    'towns' => $this->getItemTowns($page),
-                    'uploadedTimes' => $this->getItemUploadedTimes($page),
-                    'status' => $this->getItemStatus($page),
+                    'titles' => $this->getItemTitles(),
+                    'prices' => $this->getItemPrices(),
+                    'towns' => $this->getItemTowns(),
+                    'uploadedTimes' => $this->getItemUploadedTimes(),
+                    'status' => $this->getItemStatus(),
                 ];
 
                 $items = $items->map(
                     function (?BaseItem $item, int $key) use ($data) {
+                        // If item is already filled, do nothing
                         if ($item) {
                             return $item;
                         }
@@ -67,23 +74,25 @@ class ScrapeSubitoPrices
                         $price = $data['prices']->get($key);
                         $town = $data['towns']->get($key);
                         $uploadedTime = $data['uploadedTimes']->get($key);
-                        $status = $data['status']->get($key);
+                        $status = match ($data['status']->get($key)) {
+                            'Usato' => Status::USED,
+                            'Nuovo' => Status::NEW,
+                            default => null,
+                        };
 
-                        if ($title && $price && $town && $uploadedTime) {
+                        // Fill item only if all required properties are filled
+                        try {
+                            // Create and fill item DTO to easily manage it later
                             return new BaseItem(
                                 title: $title,
                                 price: $price,
                                 town: $town,
                                 uploadedDateTime: $uploadedTime,
-                                status: match ($status) {
-                                    'Usato' => Status::USED,
-                                    'Nuovo' => Status::NEW,
-                                    default => null,
-                                }
+                                status: $status
                             );
+                        } catch (TypeError) {
+                            return null;
                         }
-
-                        return null;
                     }
                 );
 
@@ -107,43 +116,46 @@ class ScrapeSubitoPrices
         $this->printPrettyJson($data, $command);
     }
 
-    private function getEmptyItems(Page $page): Collection
+    private function getEmptyItems(): Collection
     {
-        return collect($page
+        return collect($this->page
             ->evaluate("[...document.querySelectorAll('.items__item.item-card')].map(item => null)")
             ->getReturnValue());
     }
 
-    private function getItemTitles(Page $page): Collection
+    private function getItemTitles(): Collection
     {
-        return collect($page
+        return collect($this->page
             ->evaluate("[...document.querySelectorAll('.items__item.item-card')]
                 .map(item => item.querySelector('[class*=\"SmallCard-module_item-title\"]')?.innerText)")
             ->getReturnValue())
-            ->map(fn ($value) => ! $value ? null : $value);
+            ->map(fn ($value) => ! $value ? null : trim($value));
     }
 
-    private function getItemPrices(Page $page): Collection
+    private function getItemPrices(): Collection
     {
-        return collect($page
+        return collect($this->page
             ->evaluate("[...document.querySelectorAll('.items__item.item-card')]
                 .map(item => item.querySelector('[class*=\"SmallCard-module_price\"]')?.innerText)")
             ->getReturnValue())
-            ->map(fn (?string $value) => $value ? (int) $value : null);
+            ->map(fn (?string $value) => $value
+                ? (float) Str::replace(['€', '.'], ['', ''], $value)
+                : null
+            );
     }
 
-    private function getItemTowns(Page $page): Collection
+    private function getItemTowns(): Collection
     {
-        return collect($page
+        return collect($this->page
             ->evaluate("[...document.querySelectorAll('.items__item.item-card')]
                 .map(item => item.querySelector('[class*=\"index-module_town\"]')?.innerText)")
             ->getReturnValue())
-            ->map(fn ($value) => ! $value ? null : $value);
+            ->map(fn ($value) => ! $value ? null : trim($value));
     }
 
-    private function getItemUploadedTimes(Page $page): Collection
+    private function getItemUploadedTimes(): Collection
     {
-        return collect($page
+        return collect($this->page
             ->evaluate("[...document.querySelectorAll('.items__item.item-card')]
                 .map(item => item.querySelector('[class*=\"index-module_date\"]')?.innerText)")
             ->getReturnValue())
@@ -153,6 +165,8 @@ class ScrapeSubitoPrices
                 }
 
                 $value = str($value)
+                    ->replace('Oggi', now()->format('j M'))
+                    ->replace('Ieri', now()->subDay()->format('j M'))
                     ->replace(' alle', '')
                     ->replace(
                         [
@@ -190,12 +204,12 @@ class ScrapeSubitoPrices
             });
     }
 
-    private function getItemStatus(Page $page): Collection
+    private function getItemStatus(): Collection
     {
-        return collect($page
+        return collect($this->page
             ->evaluate("[...document.querySelectorAll('.items__item.item-card')]
                 .map(item => item.querySelectorAll('[class*=\"index-module_info\"]')[0]?.innerText)")
             ->getReturnValue())
-            ->map(fn ($value) => ! $value ? null : $value);
+            ->map(fn ($value) => ! $value ? null : trim($value));
     }
 }
