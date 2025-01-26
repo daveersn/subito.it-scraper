@@ -12,6 +12,6 @@ class BaseItem
         public int $price,
         public string $town,
         public DateTimeInterface $uploadedDateTime,
-        public ?Status $status,
+        public ?Status $status = null,
     ) {}
 }

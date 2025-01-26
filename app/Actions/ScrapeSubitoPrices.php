@@ -4,6 +4,7 @@ namespace App\Actions;
 
 use App\Actions\Concerns\PrintsPrettyJson;
 use App\DTO\Items\BaseItem;
+use App\Enums\Status;
 use HeadlessChromium\BrowserFactory;
 use HeadlessChromium\Page;
 use Illuminate\Console\Command;
@@ -15,7 +16,9 @@ class ScrapeSubitoPrices
 {
     use AsAction, PrintsPrettyJson;
 
-    public string $commandSignature = 'scrape:prices {url}';
+    public string $commandSignature = 'scrape:prices {url} {--head}';
+
+    protected bool $headless = true;
 
     public function handle(string $url)
     {
@@ -24,8 +27,7 @@ class ScrapeSubitoPrices
         $innerHeight = 1080;
 
         $browser = $browserFactory->createBrowser([
-            'headless' => false,
-            // 'keepAlive' => true,
+            'headless' => $this->headless,
             'windowSize' => [1920, $innerHeight],
         ]);
 
@@ -34,45 +36,61 @@ class ScrapeSubitoPrices
             $page->navigate($url)->waitForNavigation();
 
             // Accept Cookie Banner
-            sleep(0.5);
             $page->evaluate("document.querySelector('.didomi-continue-without-agreeing').click()");
 
-            $data = $this->getEmptyItems($page);
+            $items = $this->getEmptyItems($page);
 
             /** @var int $pageHeight */
             $pageHeight = $page->evaluate('document.body.scrollHeight')->getReturnValue();
+
+            // TODO: Implement pagination
 
             for ($i = 1; $i <= ceil($pageHeight / $innerHeight); $i++) {
                 $currentHeight = $innerHeight * $i;
                 $page->evaluate("window.scrollTo(0, $currentHeight)");
 
-                $titles = $this->getItemTitles($page);
-                $prices = $this->getItemPrices($page);
-                $towns = $this->getItemTowns($page);
-                $uploadedTimes = $this->getItemUploadedTimes($page);
+                $data = [
+                    'titles' => $this->getItemTitles($page),
+                    'prices' => $this->getItemPrices($page),
+                    'towns' => $this->getItemTowns($page),
+                    'uploadedTimes' => $this->getItemUploadedTimes($page),
+                    'status' => $this->getItemStatus($page),
+                ];
 
-                $iterations = max([
-                    $titles->filter()->count(),
-                    $prices->filter()->count(),
-                    $towns->filter()->count(),
-                    $uploadedTimes->filter()->count(),
-                ]);
+                $items = $items->map(
+                    function (?BaseItem $item, int $key) use ($data) {
+                        if ($item) {
+                            return $item;
+                        }
 
-                $data = $data->map(
-                    fn (?BaseItem $item, int $key) => ! $item
-                        ? new BaseItem(
-                            title: $titles->get($key),
-                            price: $prices->get($key),
-                            town: $towns->get($key),
-                            uploadedDateTime: $uploadedTimes->get($key),
-                        )
-                        : $item
+                        $title = $data['titles']->get($key);
+                        $price = $data['prices']->get($key);
+                        $town = $data['towns']->get($key);
+                        $uploadedTime = $data['uploadedTimes']->get($key);
+                        $status = $data['status']->get($key);
+
+                        if ($title && $price && $town && $uploadedTime) {
+                            return new BaseItem(
+                                title: $title,
+                                price: $price,
+                                town: $town,
+                                uploadedDateTime: $uploadedTime,
+                                status: match ($status) {
+                                    'Usato' => Status::USED,
+                                    'Nuovo' => Status::NEW,
+                                    default => null,
+                                }
+                            );
+                        }
+
+                        return null;
+                    }
                 );
 
-                sleep(0.3);
+                usleep(0.1 * 100000);
             }
 
-            return $data;
+            return $items;
         } catch (\Exception $exception) {
             return $exception->getMessage();
         } finally {
@@ -82,9 +100,11 @@ class ScrapeSubitoPrices
 
     public function asCommand(Command $command): void
     {
+        $this->headless = ! $command->option('head');
+
         $data = $this->handle($command->argument('url'));
-        dump($data);
-        // $this->printPrettyJson($data, $command);
+
+        $this->printPrettyJson($data, $command);
     }
 
     private function getEmptyItems(Page $page): Collection
@@ -168,5 +188,14 @@ class ScrapeSubitoPrices
 
                 return Carbon::createFromFormat('j M H:i', $value, 'Europe/Rome');
             });
+    }
+
+    private function getItemStatus(Page $page): Collection
+    {
+        return collect($page
+            ->evaluate("[...document.querySelectorAll('.items__item.item-card')]
+                .map(item => item.querySelectorAll('[class*=\"index-module_info\"]')[0]?.innerText)")
+            ->getReturnValue())
+            ->map(fn ($value) => ! $value ? null : $value);
     }
 }
