@@ -12,7 +12,6 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Lorisleiva\Actions\Concerns\AsAction;
-use TypeError;
 
 class ScrapeSubitoPrices
 {
@@ -61,6 +60,7 @@ class ScrapeSubitoPrices
                     'towns' => $this->getItemTowns(),
                     'uploadedTimes' => $this->getItemUploadedTimes(),
                     'status' => $this->getItemStatus(),
+                    'link' => $this->getItemHref(),
                 ];
 
                 $items = $items->map(
@@ -79,20 +79,24 @@ class ScrapeSubitoPrices
                             'Nuovo' => Status::NEW,
                             default => null,
                         };
+                        $link = $data['link']->get($key);
+                        $id = str($link)->afterLast('-')->beforeLast('.')->toInteger();
 
                         // Fill item only if all required properties are filled
-                        try {
-                            // Create and fill item DTO to easily manage it later
-                            return new BaseItem(
-                                title: $title,
-                                price: $price,
-                                town: $town,
-                                uploadedDateTime: $uploadedTime,
-                                status: $status
-                            );
-                        } catch (TypeError) {
+                        if (! $title || ! $price || ! $town || ! $uploadedTime) {
                             return null;
                         }
+
+                        // Create and fill item DTO to easily manage it later
+                        return new BaseItem(
+                            id: $id,
+                            title: $title,
+                            price: $price,
+                            town: $town,
+                            uploadedDateTime: $uploadedTime,
+                            status: $status,
+                            link: $link
+                        );
                     }
                 );
 
@@ -209,6 +213,15 @@ class ScrapeSubitoPrices
         return collect($this->page
             ->evaluate("[...document.querySelectorAll('.items__item.item-card')]
                 .map(item => item.querySelectorAll('[class*=\"index-module_info\"]')[0]?.innerText)")
+            ->getReturnValue())
+            ->map(fn ($value) => ! $value ? null : trim($value));
+    }
+
+    private function getItemHref(): Collection
+    {
+        return collect($this->page
+            ->evaluate("[...document.querySelectorAll('.items__item.item-card')]
+                .map(item => item.querySelector('a')?.href)")
             ->getReturnValue())
             ->map(fn ($value) => ! $value ? null : trim($value));
     }
