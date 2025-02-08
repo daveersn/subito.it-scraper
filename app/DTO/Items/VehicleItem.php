@@ -2,7 +2,7 @@
 
 namespace App\DTO\Items;
 
-use App\Enums\Status;
+use App\Enums\ItemStatus;
 use DateTimeInterface;
 
 class VehicleItem extends BaseItem
@@ -12,7 +12,7 @@ class VehicleItem extends BaseItem
         int $price,
         string $town,
         DateTimeInterface $uploadedDateTime,
-        ?Status $status,
+        ?ItemStatus $status,
         public ?string $registrationYear,
         public ?string $km,
         public ?string $cc,

@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-enum Status: string
+enum ItemStatus: string
 {
     case USED = 'U';
     case NEW = 'N';

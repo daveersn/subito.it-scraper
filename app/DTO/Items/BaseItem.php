@@ -2,10 +2,11 @@
 
 namespace App\DTO\Items;
 
-use App\Enums\Status;
+use App\Enums\ItemStatus;
 use DateTimeInterface;
+use Spatie\LaravelData\Data;
 
-class BaseItem
+class BaseItem extends Data
 {
     public function __construct(
         public int $id,
@@ -13,7 +14,7 @@ class BaseItem
         public int $price,
         public string $town,
         public DateTimeInterface $uploadedDateTime,
-        public ?Status $status,
+        public ?ItemStatus $status,
         public string $link
     ) {}
 }

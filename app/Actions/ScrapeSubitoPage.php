@@ -4,7 +4,7 @@ namespace App\Actions;
 
 use App\Actions\Concerns\PrintsPrettyJson;
 use App\DTO\Items\BaseItem;
-use App\Enums\Status;
+use App\Enums\ItemStatus;
 use HeadlessChromium\BrowserFactory;
 use HeadlessChromium\Page;
 use Illuminate\Console\Command;
@@ -13,7 +13,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Lorisleiva\Actions\Concerns\AsAction;
 
-class ScrapeSubitoPrices
+class ScrapeSubitoPage
 {
     use AsAction, PrintsPrettyJson;
 
@@ -75,8 +75,8 @@ class ScrapeSubitoPrices
                         $town = $data['towns']->get($key);
                         $uploadedTime = $data['uploadedTimes']->get($key);
                         $status = match ($data['status']->get($key)) {
-                            'Usato' => Status::USED,
-                            'Nuovo' => Status::NEW,
+                            'Usato' => ItemStatus::USED,
+                            'Nuovo' => ItemStatus::NEW,
                             default => null,
                         };
                         $link = $data['link']->get($key);
@@ -103,7 +103,7 @@ class ScrapeSubitoPrices
                 usleep(0.1 * 100000);
             }
 
-            return $items;
+            return $items->filter();
         } catch (\Exception $exception) {
             return $exception->getMessage();
         } finally {
