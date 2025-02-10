@@ -2,11 +2,14 @@
 
 namespace App\Actions;
 
+use App\Actions\Scraper\ScrapeSubitoPage;
 use App\DTO\Items\BaseItem;
 use App\Models\Item;
 use App\Models\TrackedSearch;
+use App\Scraper\Scraper;
 use Filament\Notifications\Notification;
 use Filament\Support\Colors\Color;
+use HeadlessChromium\Browser;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
 use Lorisleiva\Actions\Concerns\AsAction;
@@ -19,8 +22,16 @@ class TrackSearch
 
     public function handle(TrackedSearch $search): void
     {
+        $scraper = Scraper::make([
+            'headless' => false,
+            'windowSize' => [1920, 1080],
+        ]);
+
         /** @var Collection $items */
-        $items = ScrapeSubitoPage::run($search->url);
+        $items = $scraper->wrap(fn (Browser $browser) => ScrapeSubitoPage::run(
+            $browser,
+            $search->url
+        ));
 
         $items->each(function (BaseItem $item) {
             Item::updateOrCreate(

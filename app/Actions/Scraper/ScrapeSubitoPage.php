@@ -1,11 +1,12 @@
 <?php
 
-namespace App\Actions;
+namespace App\Actions\Scraper;
 
 use App\Actions\Concerns\PrintsPrettyJson;
 use App\DTO\Items\BaseItem;
 use App\Enums\ItemStatus;
-use HeadlessChromium\BrowserFactory;
+use App\Scraper\Scraper;
+use HeadlessChromium\Browser;
 use HeadlessChromium\Page;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -23,19 +24,12 @@ class ScrapeSubitoPage
 
     protected Page $page;
 
-    public function handle(string $url)
+    public function handle(Browser $browser, string $url)
     {
-        $browserFactory = new BrowserFactory;
-
-        $innerHeight = 1080;
-
-        $browser = $browserFactory->createBrowser([
-            'headless' => $this->headless,
-            'windowSize' => [1920, $innerHeight],
-        ]);
-
         try {
-            $this->page = $browser->createPage();
+            $pages = $browser->getPages();
+
+            $this->page = $pages[0] ?? $browser->createPage();
             $this->page->navigate($url)->waitForNavigation();
 
             // Accept Cookie Banner
@@ -46,6 +40,7 @@ class ScrapeSubitoPage
 
             /** @var int $pageHeight */
             $pageHeight = $this->page->evaluate('document.body.scrollHeight')->getReturnValue();
+            $innerHeight = $this->page->evaluate('window.innerHeight')->getReturnValue();
 
             // TODO: Implement pagination
 
@@ -106,8 +101,6 @@ class ScrapeSubitoPage
             return $items->filter();
         } catch (\Exception $exception) {
             return $exception->getMessage();
-        } finally {
-            $browser->close();
         }
     }
 
@@ -115,7 +108,15 @@ class ScrapeSubitoPage
     {
         $this->headless = ! $command->option('head');
 
-        $data = $this->handle($command->argument('url'));
+        $scraper = Scraper::make([
+            'headless' => $this->headless,
+            'windowSize' => [1920, 1080],
+        ]);
+
+        $data = $scraper->wrap(fn () => $this->handle(
+            $scraper->getBrowser(),
+            $command->argument('url')
+        ));
 
         $this->printPrettyJson($data, $command);
     }

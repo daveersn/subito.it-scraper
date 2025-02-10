@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Actions\Scraper\FillTrackedSearchTitle;
 use App\Actions\TrackSearch;
 use App\Filament\Resources\TrackedSearchResource\Pages;
 use App\Models\TrackedSearch;
@@ -24,6 +25,7 @@ use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Bus;
 
 class TrackedSearchResource extends Resource
 {
@@ -63,7 +65,11 @@ class TrackedSearchResource extends Resource
                     ->color(Color::Indigo)
                     ->icon('heroicon-o-magnifying-glass')
                     ->action(function (TrackedSearch $record) {
-                        TrackSearch::dispatch($record);
+                        Bus::chain([
+                            TrackSearch::makeJob($record),
+                            FillTrackedSearchTitle::makeJob($record),
+                        ])->dispatch();
+
                         Notification::make()
                             ->icon('heroicon-o-magnifying-glass')
                             ->title('Search tracking has started')

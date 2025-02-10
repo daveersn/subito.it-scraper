@@ -1,6 +1,6 @@
 <?php
 
-use App\Actions\ScrapeSubitoPage;
+use App\Actions\Scraper\ScrapeSubitoPage;
 use App\Actions\TrackSearch;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;

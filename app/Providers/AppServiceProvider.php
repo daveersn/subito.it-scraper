@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Scraper\Scraper;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\ServiceProvider;
 
@@ -19,5 +20,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Model::unguard();
         Model::preventLazyLoading();
+
+        Scraper::$keepAlive = ! app()->isLocal();
     }
 }
