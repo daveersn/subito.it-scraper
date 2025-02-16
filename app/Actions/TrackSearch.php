@@ -9,7 +9,7 @@ use App\Models\TrackedSearch;
 use App\Scraper\Scraper;
 use Filament\Notifications\Notification;
 use Filament\Support\Colors\Color;
-use HeadlessChromium\Browser;
+use HeadlessChromium\Page;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
 use Lorisleiva\Actions\Concerns\AsAction;
@@ -28,8 +28,8 @@ class TrackSearch
         ]);
 
         /** @var Collection $items */
-        $items = $scraper->wrap(fn (Browser $browser) => ScrapeSubitoPage::run(
-            $browser,
+        $items = $scraper->wrap(fn (Page $page) => ScrapeSubitoPage::run(
+            $page,
             $search->url
         ));
 

@@ -17,7 +17,6 @@ return new class extends Migration
             $table->string('link');
             $table->char('status', 1)->nullable()->index();
             $table->timestamps();
-            $table->softDeletes();
         });
     }
 

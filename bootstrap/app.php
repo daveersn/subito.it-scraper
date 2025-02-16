@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Scraper\FillTrackedSearchTitle;
 use App\Actions\Scraper\ScrapeSubitoPage;
 use App\Actions\TrackSearch;
 use Illuminate\Foundation\Application;
@@ -21,5 +22,6 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withCommands([
         ScrapeSubitoPage::class,
         TrackSearch::class,
+        FillTrackedSearchTitle::class,
     ])
     ->create();

@@ -6,7 +6,6 @@ use App\Actions\Concerns\PrintsPrettyJson;
 use App\DTO\Items\BaseItem;
 use App\Enums\ItemStatus;
 use App\Scraper\Scraper;
-use HeadlessChromium\Browser;
 use HeadlessChromium\Page;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -24,12 +23,11 @@ class ScrapeSubitoPage
 
     protected Page $page;
 
-    public function handle(Browser $browser, string $url)
+    public function handle(Page $page, string $url)
     {
-        try {
-            $pages = $browser->getPages();
+        $this->page = $page;
 
-            $this->page = $pages[0] ?? $browser->createPage();
+        try {
             $this->page->navigate($url)->waitForNavigation();
 
             // Accept Cookie Banner
@@ -113,8 +111,8 @@ class ScrapeSubitoPage
             'windowSize' => [1920, 1080],
         ]);
 
-        $data = $scraper->wrap(fn () => $this->handle(
-            $scraper->getBrowser(),
+        $data = $scraper->wrap(fn (Page $page) => $this->handle(
+            $page,
             $command->argument('url')
         ));
 

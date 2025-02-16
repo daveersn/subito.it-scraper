@@ -70,11 +70,11 @@ class Scraper
         }
 
         if (self::$keepAlive) {
-            $this->browser->close();
-        } else {
             $this->socket->update([
                 'is_currently_active' => false,
             ]);
+        } else {
+            $this->browser->close();
         }
 
         $this->browser = null;
@@ -88,7 +88,9 @@ class Scraper
             $this->connect();
         }
 
-        $return = $callback($this->getBrowser(), $this->getSocket());
+        $page = $this->getBrowser()->getPages()[0] ?? $this->getBrowser()->createPage();
+
+        $return = $callback($page, $this->getBrowser(), $this->getSocket());
 
         $this->disconnect();
 
