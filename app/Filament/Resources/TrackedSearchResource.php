@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources;
 
-use App\Actions\Scraper\FillTrackedSearchTitle;
 use App\Actions\TrackSearch;
 use App\Filament\Resources\TrackedSearchResource\Pages;
 use App\Models\TrackedSearch;
@@ -25,7 +24,6 @@ use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Illuminate\Support\Facades\Bus;
 
 class TrackedSearchResource extends Resource
 {
@@ -43,6 +41,8 @@ class TrackedSearchResource extends Resource
 
                 TextInput::make('url')
                     ->required(),
+
+                TextInput::make('schedule'),
             ]);
     }
 
@@ -65,10 +65,7 @@ class TrackedSearchResource extends Resource
                     ->color(Color::Indigo)
                     ->icon('heroicon-o-magnifying-glass')
                     ->action(function (TrackedSearch $record) {
-                        Bus::chain([
-                            TrackSearch::makeJob($record),
-                            FillTrackedSearchTitle::makeJob($record),
-                        ])->dispatch();
+                        TrackSearch::dispatch($record);
 
                         Notification::make()
                             ->icon('heroicon-o-magnifying-glass')

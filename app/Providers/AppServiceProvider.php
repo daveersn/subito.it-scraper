@@ -21,6 +21,6 @@ class AppServiceProvider extends ServiceProvider
         Model::unguard();
         Model::preventLazyLoading();
 
-        // Scraper::$keepAlive = ! app()->isLocal();
+        Scraper::$keepAlive = ! app()->isLocal();
     }
 }

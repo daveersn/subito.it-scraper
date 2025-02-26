@@ -13,6 +13,9 @@ return new class extends Migration
             $table->id();
             $table->string('name')->nullable();
             $table->string('url');
+            $table->string('schedule')->nullable();
+            $table->dateTime('last_run_at')->nullable();
+            $table->dateTime('next_schedule_at')->nullable();
             $table->foreignIdFor(User::class);
             $table->timestamps();
             $table->softDeletes();

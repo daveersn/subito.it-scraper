@@ -82,7 +82,7 @@ class ScrapeSubitoPage
 
                         // Create and fill item DTO to easily manage it later
                         return new BaseItem(
-                            id: $id,
+                            item_id: $id,
                             title: $title,
                             price: $price,
                             town: $town,
