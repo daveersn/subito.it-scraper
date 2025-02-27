@@ -71,12 +71,6 @@ class TrackSearch
         });
 
         $searchItems->each(fn (Item $item) => $item->delete());
-
-        Notification::make('search_tracking_completed')
-            ->color(Color::Green)
-            ->title('Search tracking completed')
-            ->body("Search tracking for '".($search->name ?? $search->url)."' completed successfully")
-            ->sendToDatabase($search->user);
     }
 
     public function asCommand(Command $command)
@@ -89,6 +83,12 @@ class TrackSearch
     public function asJob(TrackedSearch $search, ?string $schedule = null, bool $selfDispatched = false)
     {
         $this->handle($search);
+
+        Notification::make('search_tracking_completed')
+            ->color(Color::Green)
+            ->title('Search tracking completed')
+            ->body("Search tracking for '".($search->name ?? $search->url)."' completed successfully")
+            ->sendToDatabase($search->user);
 
         // If scheduled, dispatch next delayed job
         if ($schedule && $schedule == $search->schedule) {

@@ -62,7 +62,7 @@ class ItemResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                TextColumn::make('price'),
+                TextColumn::make('price.value'),
 
                 TextColumn::make('town'),
 

@@ -7,6 +7,7 @@
     "require": {
         "php": "^8.2",
         "chrome-php/chrome": "^1.12",
+        "cknow/laravel-money": "^8.3",
         "filament/filament": "^3.2",
         "laravel/framework": "^11.9",
         "laravel/tinker": "^2.9",

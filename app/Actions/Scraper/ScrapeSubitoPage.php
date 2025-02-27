@@ -6,6 +6,7 @@ use App\Actions\Concerns\PrintsPrettyJson;
 use App\DTO\Items\BaseItem;
 use App\Enums\ItemStatus;
 use App\Scraper\Scraper;
+use Cknow\Money\Money;
 use HeadlessChromium\Page;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -142,7 +143,7 @@ class ScrapeSubitoPage
                 .map(item => item.querySelector('[class*=\"SmallCard-module_price\"]')?.innerText)")
             ->getReturnValue())
             ->map(fn (?string $value) => $value
-                ? (float) Str::replace(['€', '.'], ['', ''], $value)
+                ? Money::parse(Str::replace('.', '', $value))
                 : null
             );
     }
