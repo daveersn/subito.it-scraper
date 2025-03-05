@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\DispatchScheduledTrackedSearches;
 use App\Actions\Scraper\FillTrackedSearchTitle;
 use App\Actions\Scraper\ScrapeSubitoPage;
 use App\Actions\TrackSearch;
@@ -23,5 +24,6 @@ return Application::configure(basePath: dirname(__DIR__))
         ScrapeSubitoPage::class,
         TrackSearch::class,
         FillTrackedSearchTitle::class,
+        DispatchScheduledTrackedSearches::class,
     ])
     ->create();

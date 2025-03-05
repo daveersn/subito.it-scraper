@@ -7,14 +7,12 @@ use App\DTO\Items\BaseItem;
 use App\Models\Item;
 use App\Models\TrackedSearch;
 use App\Scraper\Scraper;
-use Cron\CronExpression;
 use Filament\Notifications\Notification;
 use Filament\Support\Colors\Color;
 use HeadlessChromium\Page;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
 use Lorisleiva\Actions\Concerns\AsAction;
-use Lorisleiva\Actions\Decorators\JobDecorator;
 
 class TrackSearch
 {
@@ -71,6 +69,16 @@ class TrackSearch
         });
 
         $searchItems->each(fn (Item $item) => $item->delete());
+
+        $search->update([
+            'last_run_at' => now(),
+        ]);
+
+        Notification::make('search_tracking_completed')
+            ->color(Color::Green)
+            ->title('Search tracking completed')
+            ->body("Search tracking for '".($search->name ?? $search->url)."' completed successfully")
+            ->sendToDatabase($search->user);
     }
 
     public function asCommand(Command $command)
@@ -80,38 +88,17 @@ class TrackSearch
         $this->handle($trackedSearch);
     }
 
-    public function asJob(TrackedSearch $search, ?string $schedule = null, bool $selfDispatched = false)
+    public function asJob(TrackedSearch $search, bool $withSchedule = false)
     {
         $this->handle($search);
 
-        Notification::make('search_tracking_completed')
-            ->color(Color::Green)
-            ->title('Search tracking completed')
-            ->body("Search tracking for '".($search->name ?? $search->url)."' completed successfully")
-            ->sendToDatabase($search->user);
-
-        // If scheduled, dispatch next delayed job
-        if ($schedule && $schedule == $search->schedule) {
-            self::dispatch($search, $search->schedule, true);
-        }
-    }
-
-    public function configureJob(JobDecorator $job)
-    {
-        $params = $job->getParameters();
-        $schedule = $params[1] ?? null;
-        $selfDispatched = $params[2] ?? null;
-
-        if (! $schedule || ! $selfDispatched) {
+        if (! $withSchedule || ! $search->schedule) {
             return;
         }
 
-        $schedule = new CronExpression($schedule);
-
-        try {
-            $job->delay($schedule->getNextRunDate());
-        } catch (\RuntimeException $exception) {
-            report($exception);
-        }
+        $search->update([
+            'next_scheduled_at' => $search->schedule->getNextRunDate(),
+            'last_schedule_run_at' => now(),
+        ]);
     }
 }

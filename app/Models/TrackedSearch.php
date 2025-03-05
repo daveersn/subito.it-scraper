@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Cron\CronExpression;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,7 +18,8 @@ class TrackedSearch extends Model
     {
         return [
             'last_run_at' => 'datetime',
-            'next_schedule_at' => 'datetime',
+            'last_schedule_run_at' => 'datetime',
+            'next_scheduled_at' => 'datetime',
         ];
     }
 
@@ -28,5 +31,18 @@ class TrackedSearch extends Model
     public function items(): HasMany
     {
         return $this->hasMany(Item::class);
+    }
+
+    protected function schedule(): Attribute
+    {
+        return new Attribute(
+            get: fn (?string $value) => $value ? new CronExpression($value) : $value,
+            set: fn (CronExpression|string|null $value) => [
+                'schedule' => $value instanceof CronExpression ? $value->getExpression() : null,
+                'next_scheduled_at' => $value
+                    ? $value instanceof CronExpression ? $value->getNextRunDate() : (new CronExpression($value))->getNextRunDate()
+                    : null,
+            ]
+        );
     }
 }

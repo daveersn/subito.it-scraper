@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Actions\TrackSearch;
 use App\Filament\Resources\TrackedSearchResource\Pages;
 use App\Models\TrackedSearch;
+use Cron\CronExpression;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -42,7 +43,8 @@ class TrackedSearchResource extends Resource
                 TextInput::make('url')
                     ->required(),
 
-                TextInput::make('schedule'),
+                TextInput::make('schedule')
+                    ->formatStateUsing(fn (?CronExpression $state) => $state->getExpression()),
             ]);
     }
 
