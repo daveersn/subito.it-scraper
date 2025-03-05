@@ -1,4 +1,4 @@
-# Subito.it Scraper
+# Subito.it Scraperr
 
 A simple scraper for [subito.it](https://www.subito.it/) built with Laravel and **chromephp** using **Chromium** in headless mode.  
 Currently, it can extract *title*, *price*, *location*, *upload date*, and *condition* from a single page.  
