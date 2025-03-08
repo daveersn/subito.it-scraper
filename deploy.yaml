@@ -1,0 +1,34 @@
+import:
+  - recipe/laravel.php
+  - contrib/php-fpm.php
+  - contrib/npm.php
+
+
+config:
+  repository: 'https://daveersn@github.com/daveersn/subito.it-scraper.git'
+  php_fpm_version: '8.4'
+
+hosts:
+  prod:
+    remote_user: scraper
+    hostname: 188.245.249.97
+    deploy_path: '/home/scraper/scraper.daviderosina.com/'
+
+tasks:
+  deploy:
+    - deploy:prepare
+    - deploy:vendors
+    - artisan:storage:link
+    - artisan:config:cache
+    - artisan:route:cache
+    - artisan:view:cache
+    - artisan:event:cache
+    - artisan:migrate
+    - npm:install
+    - deploy:publish
+    - php-fpm:reload
+  npm:run:prod:
+    - run: 'cd {{release_path}} && npm run prod'
+
+after:
+  deploy:failed: deploy:unlock
