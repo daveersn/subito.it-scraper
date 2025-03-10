@@ -1,12 +1,10 @@
 import:
   - recipe/laravel.php
-  - contrib/php-fpm.php
   - contrib/npm.php
 
-
 config:
+  keep_releases: 3
   repository: 'https://daveersn@github.com/daveersn/subito.it-scraper.git'
-  php_fpm_version: '8.4'
 
 hosts:
   prod:
@@ -26,7 +24,6 @@ tasks:
     - artisan:migrate
     - npm:install
     - deploy:publish
-    - php-fpm:reload
   npm:run:prod:
     - run: 'cd {{release_path}} && npm run prod'
 
