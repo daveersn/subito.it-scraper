@@ -125,7 +125,7 @@ class Scraper
     private function createBrowser(array $params = []): Browser
     {
         // The browser was probably closed, start it again
-        $factory = new BrowserFactory;
+        $factory = new BrowserFactory(config('scraper.chrome_binary'));
         $browser = $factory->createBrowser($params);
 
         // Save the uri to be able to connect again to browser
