@@ -6,8 +6,10 @@ use App\Actions\TrackSearch;
 use App\Filament\Resources\TrackedSearchResource\Pages;
 use App\Models\TrackedSearch;
 use Cron\CronExpression;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Colors\Color;
@@ -25,6 +27,7 @@ use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\HtmlString;
 
 class TrackedSearchResource extends Resource
 {
@@ -44,7 +47,24 @@ class TrackedSearchResource extends Resource
                     ->required(),
 
                 TextInput::make('schedule')
-                    ->formatStateUsing(fn (?CronExpression $state) => $state->getExpression()),
+                    ->live()
+                    ->formatStateUsing(fn (?CronExpression $state, $record) => $state?->getExpression()),
+                Placeholder::make('next_scheduled_at')
+                    ->content(function (?TrackedSearch $record, Get $get) {
+                        if ($record && $record->next_scheduled_at) {
+                            return $record->next_scheduled_at->format('d/m/Y H:i');
+                        }
+
+                        $schedule = $get('schedule');
+
+                        try {
+                            return $schedule
+                                ? (new CronExpression($schedule))?->getNextRunDate()->format('d/m/Y H:i')
+                                : null;
+                        } catch (\InvalidArgumentException) {
+                            return new HtmlString("<span class='text-danger-600 font-semibold'>Invalid schedule</span>");
+                        }
+                    }),
             ]);
     }
 

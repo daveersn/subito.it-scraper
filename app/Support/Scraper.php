@@ -26,7 +26,7 @@ class Scraper
 
         if (! isset($params['userAgent'])) {
             // Instead of Chromium User Agent
-            $params['userAgent'] = config();
+            $params['userAgent'] = config('scraper.user_agent');
         }
 
         $this->params = $params;

@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\TrackedSearchResource\Pages;
 
+use App\Actions\Scraper\FillTrackedSearchTitle;
 use App\Filament\Resources\TrackedSearchResource;
+use App\Models\TrackedSearch;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
@@ -18,7 +20,8 @@ class ListTrackedSearches extends ListRecords
                     $data['user_id'] = auth()->id();
 
                     return $data;
-                }),
+                })
+                ->after(fn (TrackedSearch $record) => ! $record->name ? FillTrackedSearchTitle::dispatch($record) : null),
         ];
     }
 }

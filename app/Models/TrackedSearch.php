@@ -38,7 +38,9 @@ class TrackedSearch extends Model
         return new Attribute(
             get: fn (?string $value) => $value ? new CronExpression($value) : $value,
             set: fn (CronExpression|string|null $value) => [
-                'schedule' => $value instanceof CronExpression ? $value->getExpression() : null,
+                'schedule' => $value
+                    ? $value instanceof CronExpression ? $value->getExpression() : (new CronExpression($value))->getExpression()
+                    : null,
                 'next_scheduled_at' => $value
                     ? $value instanceof CronExpression ? $value->getNextRunDate() : (new CronExpression($value))->getNextRunDate()
                     : null,
