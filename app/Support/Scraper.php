@@ -129,6 +129,11 @@ class Scraper
 
     private function createBrowser(array $params = []): Browser
     {
+        // Can't instance chrome graphics environment in production mode
+        if (app()->isProduction() && isset($params['headless'])) {
+            unset($params['headless']);
+        }
+
         // The browser was probably closed, start it again
         $factory = new BrowserFactory(config('scraper.chrome_binary'));
         $browser = $factory->createBrowser($params);

@@ -27,7 +27,6 @@ class TrackSearch
     public function handle(TrackedSearch $search): void
     {
         $scraper = Scraper::make([
-            'headless' => false,
             'windowSize' => [1920, 1080],
         ]);
 
