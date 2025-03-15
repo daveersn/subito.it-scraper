@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Scraper;
+namespace App\Support;
 
 use App\Models\BrowserSocket;
 use HeadlessChromium\Browser;
@@ -22,6 +22,11 @@ class Scraper
     {
         if (! isset($params['keepAlive']) && self::$keepAlive) {
             $params['keepAlive'] = true;
+        }
+
+        if (! isset($params['userAgent'])) {
+            // Instead of Chromium User Agent
+            $params['userAgent'] = config();
         }
 
         $this->params = $params;

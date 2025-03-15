@@ -6,7 +6,7 @@ use App\Actions\Scraper\ScrapeSubitoPage;
 use App\DTO\Items\BaseItem;
 use App\Models\Item;
 use App\Models\TrackedSearch;
-use App\Scraper\Scraper;
+use App\Support\Scraper;
 use Filament\Notifications\Notification;
 use Filament\Support\Colors\Color;
 use HeadlessChromium\Page;

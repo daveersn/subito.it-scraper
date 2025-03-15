@@ -4,7 +4,7 @@ namespace App\Actions\Scraper;
 
 use App\Actions\Concerns\PrintsPrettyJson;
 use App\Models\TrackedSearch;
-use App\Scraper\Scraper;
+use App\Support\Scraper;
 use HeadlessChromium\Page;
 use Illuminate\Console\Command;
 use Lorisleiva\Actions\Concerns\AsAction;

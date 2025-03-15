@@ -5,7 +5,7 @@ namespace App\Actions\Scraper;
 use App\Actions\Concerns\PrintsPrettyJson;
 use App\DTO\Items\BaseItem;
 use App\Enums\ItemStatus;
-use App\Scraper\Scraper;
+use App\Support\Scraper;
 use Cknow\Money\Money;
 use HeadlessChromium\Page;
 use Illuminate\Console\Command;

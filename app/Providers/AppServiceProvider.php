@@ -2,7 +2,7 @@
 
 namespace App\Providers;
 
-use App\Scraper\Scraper;
+use App\Support\Scraper;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\ServiceProvider;
 
