@@ -24,6 +24,7 @@ tasks:
     - artisan:migrate
     - npm:install
     - deploy:publish
+    - artisan:queue:restart
   npm:run:prod:
     - run: 'cd {{release_path}} && npm run prod'
 
