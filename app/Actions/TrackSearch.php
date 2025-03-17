@@ -62,7 +62,7 @@ class TrackSearch
                 ->save();
 
             // If price changes, attach a new price record
-            if (! $model->price()->exists() || $model->price->value !== $item->price) {
+            if (! $model->price()->exists() || $model->price->value->getAmount() !== $item->price->getAmount()) {
                 $model->price()->create(['value' => $item->price]);
             }
         });
