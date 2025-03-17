@@ -20,7 +20,7 @@ class GetOrphanSockets
     {
         $sockets = GetSockets::run();
 
-        $orphanSockets = BrowserSocket::get(['id', 'uri'])
+        $orphanSockets = BrowserSocket::all(['id', 'uri'])
             ->filter(function (BrowserSocket $socket) use ($sockets) {
                 $uri = str($socket->uri)
                     ->after('ws://')
@@ -30,7 +30,7 @@ class GetOrphanSockets
                 return ! in_array($uri, $sockets);
             });
 
-        return $orphanSockets->toArray();
+        return $orphanSockets->all();
     }
 
     public function asCommand(Command $command): void
