@@ -15,9 +15,17 @@ class GetSockets
 
     public function handle(): array
     {
-        $socketUris = Process::run("ss -lntp | grep -i chrome | awk '{print $4}'")->output();
+        $socketUris = Process::run("ss -lntp | grep -i chrome | awk '{ match($0, /pid=([0-9]+)/, arr); print arr[1] \" \" $4 }'")->output();
 
-        return array_filter(array_map('trim', explode("\n", $socketUris)));
+        return collect(explode("\n", $socketUris))
+            ->filter()
+            ->map(fn (string $socket) => trim($socket))
+            ->mapWithKeys(function (string $socket) {
+                [$pid, $uri] = explode(' ', $socket);
+
+                return [$pid => $uri];
+            })
+            ->all();
     }
 
     public function asCommand(Command $command): void

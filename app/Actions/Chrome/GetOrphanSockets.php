@@ -18,7 +18,7 @@ class GetOrphanSockets
      */
     public function handle(): array
     {
-        $sockets = GetSockets::run();
+        $sockets = array_values(GetSockets::run());
 
         $orphanSockets = BrowserSocket::all(['id', 'uri'])
             ->filter(function (BrowserSocket $socket) use ($sockets) {
