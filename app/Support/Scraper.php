@@ -50,7 +50,7 @@ class Scraper
                 ->whereParams(json_encode($this->getParams()))
                 ->firstOrFail();
 
-            $this->browser = BrowserFactory::connectToBrowser($this->socket->uri);
+            $this->browser = $this->socket->getBrowser();
 
             // Set browser as currently active
             $this->socket->update([
