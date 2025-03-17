@@ -12,7 +12,7 @@ class KillSockets
 
     public $commandSignature = 'chrome:kill-sockets';
 
-    public function handle(): array
+    public function handle(): void
     {
         BrowserSocket::get(['id', 'uri'])->each(function (BrowserSocket $socket) {
             try {

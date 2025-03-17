@@ -10,7 +10,7 @@ class DeleteOrphanSockets
 
     public $commandSignature = 'chrome:delete-orphan';
 
-    public function handle(): array
+    public function handle(): void
     {
         foreach (GetOrphanSockets::run() as $browserSocket) {
             $browserSocket->delete();
