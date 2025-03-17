@@ -1,7 +1,9 @@
 <?php
 
+use App\Actions\Chrome\DeleteOrphanSockets;
 use App\Actions\Chrome\GetOrphanSockets;
 use App\Actions\Chrome\GetSockets;
+use App\Actions\Chrome\KillSockets;
 use App\Actions\DispatchScheduledTrackedSearches;
 use App\Actions\Scraper\FillTrackedSearchTitle;
 use App\Actions\Scraper\ScrapeSubitoPage;
@@ -29,5 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
         DispatchScheduledTrackedSearches::class,
         GetSockets::class,
         GetOrphanSockets::class,
+        DeleteOrphanSockets::class,
+        KillSockets::class,
     ])
     ->create();

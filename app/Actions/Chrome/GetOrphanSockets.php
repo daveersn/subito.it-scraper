@@ -13,6 +13,9 @@ class GetOrphanSockets
 
     public $commandSignature = 'chrome:orphan';
 
+    /**
+     * @return array<BrowserSocket>
+     */
     public function handle(): array
     {
         $sockets = GetSockets::run();
