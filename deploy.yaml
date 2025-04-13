@@ -23,10 +23,11 @@ tasks:
     - artisan:event:cache
     - artisan:migrate
     - npm:install
+    - npm:run:build
     - deploy:publish
     - artisan:queue:restart
-  npm:run:prod:
-    - run: 'cd {{release_path}} && npm run prod'
+  npm:run:build:
+    - run: 'cd {{release_path}} && {{bin/npm}} run build'
 
 after:
   deploy:failed: deploy:unlock
