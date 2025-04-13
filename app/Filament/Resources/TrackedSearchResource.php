@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Actions\TrackSearch;
 use App\Filament\Resources\TrackedSearchResource\Pages;
 use App\Models\TrackedSearch;
+use Cknow\Money\Money;
 use Cron\CronExpression;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\TextInput;
@@ -22,11 +23,14 @@ use Filament\Tables\Actions\ForceDeleteAction;
 use Filament\Tables\Actions\ForceDeleteBulkAction;
 use Filament\Tables\Actions\RestoreAction;
 use Filament\Tables\Actions\RestoreBulkAction;
+use Filament\Tables\Columns\Layout\Split;
+use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\HtmlString;
 
 class TrackedSearchResource extends Resource
@@ -71,12 +75,41 @@ class TrackedSearchResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->contentGrid([
+                'default' => 2,
+            ])
+            ->selectable(false)
             ->columns([
-                TextColumn::make('name')
-                    ->searchable()
-                    ->sortable(),
+                Stack::make([
+                    TextColumn::make('name')
+                        ->searchable()
+                        ->formatStateUsing(fn (string $state) => new HtmlString("<span class='text-xl font-bold'>$state</span>"))
+                        ->sortable(),
 
-                TextColumn::make('url'),
+                    Split::make([
+                        TextColumn::make('items_count')
+                            ->grow(false)
+                            ->formatStateUsing(fn (?int $state) => $state ? "$state items" : null),
+                        TextColumn::make('last_run_at')
+                            ->formatStateUsing(fn (?Carbon $state) => $state ? "Ultima ricerca: {$state->diffForHumans()}" : null),
+                    ])
+                        ->extraAttributes(['class' => 'mt-2']),
+
+                    Split::make([
+                        TextColumn::make('prices_avg_value')
+                            ->formatStateUsing(fn (?int $state) => $state ? new HtmlString('<p class="text-gray-500">Average price:</p><p>'.new Money($state).'</p>') : null),
+
+                        TextColumn::make('prices_min_value')
+                            ->formatStateUsing(fn (?int $state) => $state ? new HtmlString('<p class="text-gray-500">Minimum price:</p><p>'.new Money($state).'</p>') : null),
+
+                        TextColumn::make('prices_max_value')
+                            ->formatStateUsing(fn (?int $state) => $state ? new HtmlString('<p class="text-gray-500">Maximum price:</p><p>'.new Money($state).'</p>') : null),
+                    ])
+                        ->extraAttributes(['class' => 'mt-6']),
+
+                    TextColumn::make('next_scheduled_at')
+                        ->formatStateUsing(fn (?Carbon $state) => $state ? new HtmlString("Next scheduled at: {$state->diffForHumans()}") : null),
+                ]),
             ])
             ->filters([
                 TrashedFilter::make(),
@@ -119,6 +152,10 @@ class TrackedSearchResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->withCount('items')
+            ->withAvg('prices', 'value')
+            ->withMax('prices', 'value')
+            ->withMin('prices', 'value')
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);

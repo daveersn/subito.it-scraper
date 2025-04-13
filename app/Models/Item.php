@@ -31,9 +31,7 @@ class Item extends Model
 
     public function price(): HasOne
     {
-        return $this->hasOne(Price::class)
-            ->orderBy('created_at', 'desc')
-            ->limit(1);
+        return $this->hasOne(Price::class)->latestOfMany();
     }
 
     public function trackedSearch(): BelongsTo
