@@ -1,1 +1,21 @@
 @import '/vendor/filament/filament/resources/css/theme.css';
+
+.tracked-search-list-item {
+    > * > .py-4 {
+        @apply py-5;
+
+        > * > * {
+            @apply px-6;
+        }
+
+        > .fi-ta-actions {
+            position: absolute;
+            right: 0;
+            transform: translateY(5px);
+
+            .fi-dropdown {
+                padding-right: 0;
+            }
+        }
+    }
+}

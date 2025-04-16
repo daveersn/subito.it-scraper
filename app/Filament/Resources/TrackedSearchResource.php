@@ -15,6 +15,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Colors\Color;
 use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\ActionGroup;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
@@ -78,6 +79,7 @@ class TrackedSearchResource extends Resource
             ->contentGrid([
                 'default' => 2,
             ])
+            ->recordClasses(['tracked-search-list-item'])
             ->selectable(false)
             ->columns([
                 Stack::make([
@@ -93,45 +95,48 @@ class TrackedSearchResource extends Resource
                         TextColumn::make('last_run_at')
                             ->formatStateUsing(fn (?Carbon $state) => $state ? "Ultima ricerca: {$state->diffForHumans()}" : null),
                     ])
-                        ->extraAttributes(['class' => 'mt-2']),
+                        ->extraAttributes(['class' => 'mt-1']),
 
                     Split::make([
                         TextColumn::make('prices_avg_value')
-                            ->formatStateUsing(fn (?int $state) => $state ? new HtmlString('<p class="text-gray-500">Average price:</p><p>'.new Money($state).'</p>') : null),
+                            ->formatStateUsing(fn (?int $state) => $state ? new HtmlString('<p class="text-gray-500">Average price:</p><p class="text-base">'.new Money($state).'</p>') : null),
 
                         TextColumn::make('prices_min_value')
-                            ->formatStateUsing(fn (?int $state) => $state ? new HtmlString('<p class="text-gray-500">Minimum price:</p><p>'.new Money($state).'</p>') : null),
+                            ->formatStateUsing(fn (?int $state) => $state ? new HtmlString('<p class="text-gray-500">Minimum price:</p><p class="text-base">'.new Money($state).'</p>') : null),
 
                         TextColumn::make('prices_max_value')
-                            ->formatStateUsing(fn (?int $state) => $state ? new HtmlString('<p class="text-gray-500">Maximum price:</p><p>'.new Money($state).'</p>') : null),
+                            ->formatStateUsing(fn (?int $state) => $state ? new HtmlString('<p class="text-gray-500">Maximum price:</p><p class="text-base">'.new Money($state).'</p>') : null),
                     ])
                         ->extraAttributes(['class' => 'mt-6']),
 
                     TextColumn::make('next_scheduled_at')
-                        ->formatStateUsing(fn (?Carbon $state) => $state ? new HtmlString("Next scheduled at: {$state->diffForHumans()}") : null),
+                        ->extraAttributes(['class' => 'mt-4'])
+                        ->formatStateUsing(fn (?Carbon $state) => $state ? new HtmlString("<span class='text-gray-500'>Prossima programmazione:</span> <span>{$state->diffForHumans()}</span>") : null),
                 ]),
             ])
             ->filters([
                 TrashedFilter::make(),
             ])
             ->actions([
-                Action::make('run_scraping')
-                    ->label('Scrape')
-                    ->color(Color::Indigo)
-                    ->icon('heroicon-o-magnifying-glass')
-                    ->action(function (TrackedSearch $record) {
-                        TrackSearch::dispatch($record);
+                ActionGroup::make([
+                    Action::make('run_scraping')
+                        ->label('Scrape')
+                        ->color(Color::Indigo)
+                        ->icon('heroicon-o-magnifying-glass')
+                        ->action(function (TrackedSearch $record) {
+                            TrackSearch::dispatch($record);
 
-                        Notification::make()
-                            ->icon('heroicon-o-magnifying-glass')
-                            ->title('Search tracking has started')
-                            ->body("Search tracking for '".($record->name ?? $record->url)."' has started.\n You will receive a notification when is the tracking has finished")
-                            ->send();
-                    }),
-                EditAction::make(),
-                DeleteAction::make(),
-                RestoreAction::make(),
-                ForceDeleteAction::make(),
+                            Notification::make()
+                                ->icon('heroicon-o-magnifying-glass')
+                                ->title('Search tracking has started')
+                                ->body("Search tracking for '".($record->name ?? $record->url)."' has started.\n You will receive a notification when is the tracking has finished")
+                                ->send();
+                        }),
+                    EditAction::make(),
+                    DeleteAction::make(),
+                    RestoreAction::make(),
+                    ForceDeleteAction::make(),
+                ]),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
@@ -139,13 +144,15 @@ class TrackedSearchResource extends Resource
                     RestoreBulkAction::make(),
                     ForceDeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->recordUrl(fn (TrackedSearch $record) => Pages\ListItems::getUrl(['record' => $record]));
     }
 
     public static function getPages(): array
     {
         return [
             'index' => Pages\ListTrackedSearches::route('/'),
+            'list' => Pages\ListItems::route('/{record}'),
         ];
     }
 
