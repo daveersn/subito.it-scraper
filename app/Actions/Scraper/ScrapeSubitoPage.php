@@ -24,15 +24,41 @@ class ScrapeSubitoPage
 
     protected Page $page;
 
-    public function handle(Page $page, string $url)
+    private string $url;
+
+    protected Collection $items;
+
+    protected int $currentPageIndex = 1;
+
+    public function handle(Page $page, string $url): Collection
     {
         $this->page = $page;
+        $this->url = $url;
+
+        $this->items = collect();
+
+        $pageItems = $this->scrapePageItems();
+        $this->items->push($pageItems);
+
+        while ($this->hasNextPage()) {
+            $this->currentPageIndex++;
+
+            $pageItems = $this->scrapePageItems();
+            $this->items->push($pageItems);
+        }
+
+        return $this->items->flatten();
+    }
+
+    protected function scrapePageItems(): Collection
+    {
+        $items = collect();
 
         try {
-            $this->page->navigate($url)->waitForNavigation();
+            $this->page->navigate("$this->url&o=$this->currentPageIndex")->waitForNavigation();
 
             // Accept Cookie Banner
-            $this->page->evaluate("document.querySelector('.didomi-continue-without-agreeing').click()");
+            $this->page->evaluate("document.querySelector('.didomi-continue-without-agreeing')?.click()");
 
             // Create empty items collection, to be filled later
             $items = $this->getEmptyItems();
@@ -40,8 +66,6 @@ class ScrapeSubitoPage
             /** @var int $pageHeight */
             $pageHeight = $this->page->evaluate('document.body.scrollHeight')->getReturnValue();
             $innerHeight = $this->page->evaluate('window.innerHeight')->getReturnValue();
-
-            // TODO: Implement pagination
 
             // Scroll page n times browser inner height, so item infos are retrieved correctly
             for ($i = 1; $i <= ceil($pageHeight / $innerHeight); $i++) {
@@ -96,11 +120,11 @@ class ScrapeSubitoPage
 
                 usleep(0.1 * 100000);
             }
-
-            return $items->filter();
         } catch (\Exception $exception) {
-            return $exception->getMessage();
+            report($exception->getMessage());
         }
+
+        return $items->filter();
     }
 
     public function asCommand(Command $command): void
@@ -224,5 +248,10 @@ class ScrapeSubitoPage
                 .map(item => item.querySelector('a')?.href)")
             ->getReturnValue())
             ->map(fn ($value) => ! $value ? null : trim($value));
+    }
+
+    protected function hasNextPage(): bool
+    {
+        return ! ($this->page->evaluate("document.querySelector('.pagination-container > button:last-child')?.disabled")->getReturnValue() ?? true);
     }
 }
