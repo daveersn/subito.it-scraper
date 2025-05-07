@@ -4,6 +4,7 @@ namespace App\Filament\Resources\TrackedSearchResource\Widgets;
 
 use App\Models\TrackedSearch;
 use Cknow\Money\Money;
+use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 use Flowframe\Trend\Trend;
 use Illuminate\Support\Collection;
@@ -43,94 +44,104 @@ class ItemPricesChart extends ChartWidget
                 ],
             ],
         ];
+
     }
 
-    protected function getOptions(): array
+    protected function getOptions(): array|RawJs|null
     {
-        return [
-            // Animazioni e interazioni
-            'interaction' => [
-                'mode' => 'nearest',
-                'axis' => 'x',
-                'intersect' => false,
-            ],
+        $interaction = Js::from([
+            'mode' => 'nearest',
+            'axis' => 'x',
+            'intersect' => false,
+        ]);
 
-            // Configurazione dei plugin
-            'plugins' => [
-                'title' => [
-                    'display' => true,
-                    'text' => 'Andamento Prezzi ultimi 12 mesi',
-                    'padding' => 20,
-                    'font' => [
-                        'size' => 16,
-                        'weight' => '500',
-                    ],
-                ],
-                'legend' => [
-                    'display' => true,
-                    'position' => 'bottom',
-                    'labels' => [
-                        'usePointStyle' => true,
-                        'padding' => 20,
-                        'boxWidth' => 12,
-                        'font' => [
-                            'size' => 12,
-                        ],
-                    ],
-                ],
-                'tooltip' => [
-                    'mode' => 'index',
-                    'intersect' => false,
-                    'padding' => 10,
-                    'callbacks' => [
-                        // Formatter del valore con € e 2 decimali
-                        'label' => new Js('function(context){const val = context.parsed.y;return `${context.dataset.label}: €${val.toFixed(2)}`;}'),
-                    ],
-                ],
+        $title = Js::from([
+            'display' => true,
+            'text' => 'Andamento Prezzi ultimi 12 mesi',
+            'padding' => 20,
+            'font' => [
+                'size' => 16,
+                'weight' => '500',
             ],
+        ]);
 
-            // Configurazione degli assi
-            'scales' => [
-                'x' => [
-                    'title' => [
-                        'display' => true,
-                        'text' => 'Mese',
-                        'font' => ['size' => 14],
-                    ],
-                    'grid' => [
-                        'display' => false,
-                    ],
-                ],
-                'y' => [
-                    'title' => [
-                        'display' => true,
-                        'text' => 'Prezzo (€)',
-                        'font' => ['size' => 14],
-                    ],
-                    'grid' => [
-                        'color' => 'rgba(0, 0, 0, 0.05)',
-                        'borderDash' => [5, 5],
-                    ],
-                    'ticks' => [
-                        'beginAtZero' => false,
-                        'callback' => "function(val) { return '€' + val; }",
-                    ],
+        $legend = Js::from([
+            'display' => true,
+            'position' => 'bottom',
+            'labels' => [
+                'usePointStyle' => true,
+                'padding' => 20,
+                'boxWidth' => 12,
+                'font' => [
+                    'size' => 12,
                 ],
             ],
+        ]);
 
-            // Stile degli elementi (linee e punti)
-            'elements' => [
-                'line' => [
-                    'tension' => 0.2,   // curvatura della linea
-                    'borderWidth' => 3,
-                ],
-                'point' => [
-                    'radius' => 4,
-                    'hoverRadius' => 6,
-                    'hitRadius' => 8,
-                ],
+        $x = Js::from([
+            'title' => [
+                'display' => true,
+                'text' => 'Mese',
+                'font' => ['size' => 14],
             ],
-        ];
+            'grid' => [
+                'display' => false,
+            ],
+        ]);
+
+        $elements = Js::from([
+            'line' => [
+                'tension' => 0.2,   // curvatura della linea
+                'borderWidth' => 3,
+            ],
+            'point' => [
+                'radius' => 4,
+                'hoverRadius' => 6,
+                'hitRadius' => 8,
+            ],
+        ]);
+
+        return RawJs::make("{
+            interaction: $interaction,
+            plugins: {
+                title: $title,
+                legend: $legend,
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    padding: 10,
+                    callbacks: {
+                        label: function(context) {
+                            const val = context.parsed.y;
+                            return `\${context.dataset.label}: €\${val.toFixed(2)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: $x,
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Prezzo (€)',
+                        font: {
+                            size: 14
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)',
+                        borderDash: [5, 5]
+                    },
+                    ticks: {
+                        beginAtZero: false,
+                        callback: function (val) {
+                            return '€' + val;
+                        }
+                    }
+                }
+            },
+            elements: $elements,
+    }");
     }
 
     protected function getType(): string
