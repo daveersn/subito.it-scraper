@@ -3,15 +3,10 @@
 namespace App\Actions\Scraper;
 
 use App\Actions\Concerns\PrintsPrettyJson;
-use App\DTO\Items\BaseItem;
-use App\Enums\ItemStatus;
 use App\Support\Scraper;
-use Cknow\Money\Money;
 use HeadlessChromium\Page;
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 class ScrapeSubitoPage
@@ -22,109 +17,50 @@ class ScrapeSubitoPage
 
     protected bool $headless = true;
 
-    protected Page $page;
-
-    private string $url;
-
-    protected Collection $items;
-
-    protected int $currentPageIndex = 1;
-
     public function handle(Page $page, string $url): Collection
     {
-        $this->page = $page;
-        $this->url = $url;
+        $allItems = collect();
+        $currentPageIndex = 1;
 
-        $this->items = collect();
+        do {
+            try {
+                // Navigate to the current page
+                $page->navigate("$url&o=$currentPageIndex")->waitForNavigation();
 
-        $pageItems = $this->scrapePageItems();
-        $this->items->push($pageItems);
+                // Accept Cookie Banner if present
+                $page->evaluate("document.querySelector('.didomi-continue-without-agreeing')?.click()");
 
-        while ($this->hasNextPage()) {
-            $this->currentPageIndex++;
+                // Scroll down to ensure all content is loaded
+                $this->scrollPage($page);
 
-            $pageItems = $this->scrapePageItems();
-            $this->items->push($pageItems);
-        }
+                // Extract items from the current page
+                $rawItems = ExtractSubitoItemsFromPage::run($page);
 
-        return $this->items->flatten();
-    }
+                // Skip to next page if no items found
+                if ($rawItems->isEmpty()) {
+                    break;
+                }
 
-    protected function scrapePageItems(): Collection
-    {
-        $items = collect();
+                // Normalize items to DTOs
+                $items = NormalizeSubitoItem::run($rawItems);
 
-        try {
-            $this->page->navigate("$this->url&o=$this->currentPageIndex")->waitForNavigation();
+                // Add items to the collection
+                $allItems = $allItems->merge($items);
 
-            // Accept Cookie Banner
-            $this->page->evaluate("document.querySelector('.didomi-continue-without-agreeing')?.click()");
+                // Check if there's a next page
+                $hasNextPage = $this->hasNextPage($page);
 
-            // Create empty items collection, to be filled later
-            $items = $this->getEmptyItems();
-
-            /** @var int $pageHeight */
-            $pageHeight = $this->page->evaluate('document.body.scrollHeight')->getReturnValue();
-            $innerHeight = $this->page->evaluate('window.innerHeight')->getReturnValue();
-
-            // Scroll page n times browser inner height, so item infos are retrieved correctly
-            for ($i = 1; $i <= ceil($pageHeight / $innerHeight); $i++) {
-                $currentHeight = $innerHeight * $i;
-                $this->page->evaluate("window.scrollTo(0, $currentHeight)");
-
-                $data = [
-                    'titles' => $this->getItemTitles(),
-                    'prices' => $this->getItemPrices(),
-                    'towns' => $this->getItemTowns(),
-                    'uploadedTimes' => $this->getItemUploadedTimes(),
-                    'status' => $this->getItemStatus(),
-                    'link' => $this->getItemHref(),
-                ];
-
-                $items = $items->map(
-                    function (?BaseItem $item, int $key) use ($data) {
-                        // If item is already filled, do nothing
-                        if ($item) {
-                            return $item;
-                        }
-
-                        $title = $data['titles']->get($key);
-                        $price = $data['prices']->get($key);
-                        $town = $data['towns']->get($key);
-                        $uploadedTime = $data['uploadedTimes']->get($key);
-                        $status = match ($data['status']->get($key)) {
-                            'Usato' => ItemStatus::USED,
-                            'Nuovo' => ItemStatus::NEW,
-                            default => null,
-                        };
-                        $link = $data['link']->get($key);
-                        $id = str($link)->afterLast('-')->beforeLast('.')->toInteger();
-
-                        // Fill item only if all required properties are filled
-                        if (! $title || ! $price || ! $town || ! $uploadedTime) {
-                            return null;
-                        }
-
-                        // Create and fill item DTO to easily manage it later
-                        return new BaseItem(
-                            item_id: $id,
-                            title: $title,
-                            price: $price,
-                            town: $town,
-                            uploadedDateTime: $uploadedTime,
-                            status: $status,
-                            link: $link
-                        );
-                    }
-                );
-
-                usleep(0.1 * 100000);
+                // Increment page index if there's a next page
+                if ($hasNextPage) {
+                    $currentPageIndex++;
+                }
+            } catch (\Exception $e) {
+                report("Error scraping Subito.it page $currentPageIndex: {$e->getMessage()}");
+                break;
             }
-        } catch (\Exception $exception) {
-            report($exception->getMessage());
-        }
+        } while ($this->hasNextPage($page));
 
-        return $items->filter();
+        return $allItems;
     }
 
     public function asCommand(Command $command): void
@@ -144,114 +80,38 @@ class ScrapeSubitoPage
         $this->printPrettyJson($data, $command);
     }
 
-    private function getEmptyItems(): Collection
+    /**
+     * Scroll the page to ensure all content is loaded
+     */
+    protected function scrollPage(Page $page): void
     {
-        return collect($this->page
-            ->evaluate("[...document.querySelectorAll('.items__item.item-card')].map(item => null)")
-            ->getReturnValue());
+        try {
+            /** @var int $pageHeight */
+            $pageHeight = $page->evaluate('document.body.scrollHeight')->getReturnValue();
+            $innerHeight = $page->evaluate('window.innerHeight')->getReturnValue();
+
+            // Scroll page n times browser inner height
+            for ($i = 1; $i <= ceil($pageHeight / $innerHeight); $i++) {
+                $currentHeight = $innerHeight * $i;
+                $page->evaluate("window.scrollTo(0, $currentHeight)");
+                usleep(0.1 * 100000); // Small delay to allow content to load
+            }
+        } catch (\Exception $e) {
+            report("Error scrolling page: {$e->getMessage()}");
+        }
     }
 
-    private function getItemTitles(): Collection
+    /**
+     * Check if there's a next page
+     */
+    protected function hasNextPage(Page $page): bool
     {
-        return collect($this->page
-            ->evaluate("[...document.querySelectorAll('.items__item.item-card')]
-                .map(item => item.querySelector('[class*=\"SmallCard-module_item-title\"]')?.innerText)")
-            ->getReturnValue())
-            ->map(fn ($value) => ! $value ? null : trim($value));
-    }
+        try {
+            return ! ($page->evaluate("document.querySelector('.pagination-container > button:last-child')?.disabled")->getReturnValue() ?? true);
+        } catch (\Exception $e) {
+            report("Error checking for next page: {$e->getMessage()}");
 
-    private function getItemPrices(): Collection
-    {
-        return collect($this->page
-            ->evaluate("[...document.querySelectorAll('.items__item.item-card')]
-                .map(item => item.querySelector('[class*=\"SmallCard-module_price\"]')?.innerText)")
-            ->getReturnValue())
-            ->map(fn (?string $value) => $value
-                ? Money::parse(Str::replace('.', '', $value))
-                : null
-            );
-    }
-
-    private function getItemTowns(): Collection
-    {
-        return collect($this->page
-            ->evaluate("[...document.querySelectorAll('.items__item.item-card')]
-                .map(item => item.querySelector('[class*=\"index-module_town\"]')?.innerText)")
-            ->getReturnValue())
-            ->map(fn ($value) => ! $value ? null : trim($value));
-    }
-
-    private function getItemUploadedTimes(): Collection
-    {
-        return collect($this->page
-            ->evaluate("[...document.querySelectorAll('.items__item.item-card')]
-                .map(item => item.querySelector('[class*=\"index-module_date\"]')?.innerText)")
-            ->getReturnValue())
-            ->map(function ($value) {
-                if (! $value) {
-                    return null;
-                }
-
-                $value = str($value)
-                    ->replace('Oggi', now()->format('j M'))
-                    ->replace('Ieri', now()->subDay()->format('j M'))
-                    ->replace(' alle', '')
-                    ->replace(
-                        [
-                            'gen',
-                            'feb',
-                            'mar',
-                            'apr',
-                            'mag',
-                            'giu',
-                            'lug',
-                            'ago',
-                            'set',
-                            'ott',
-                            'nov',
-                            'dic',
-                        ],
-                        [
-                            'jan',
-                            'feb',
-                            'mar',
-                            'apr',
-                            'may',
-                            'jun',
-                            'jul',
-                            'aug',
-                            'sep',
-                            'oct',
-                            'nov',
-                            'dec',
-                        ],
-                        false
-                    );
-
-                return Carbon::createFromFormat('j M H:i', $value, 'Europe/Rome');
-            });
-    }
-
-    private function getItemStatus(): Collection
-    {
-        return collect($this->page
-            ->evaluate("[...document.querySelectorAll('.items__item.item-card')]
-                .map(item => item.querySelectorAll('[class*=\"index-module_info\"]')[0]?.innerText)")
-            ->getReturnValue())
-            ->map(fn ($value) => ! $value ? null : trim($value));
-    }
-
-    private function getItemHref(): Collection
-    {
-        return collect($this->page
-            ->evaluate("[...document.querySelectorAll('.items__item.item-card')]
-                .map(item => item.querySelector('a')?.href)")
-            ->getReturnValue())
-            ->map(fn ($value) => ! $value ? null : trim($value));
-    }
-
-    protected function hasNextPage(): bool
-    {
-        return ! ($this->page->evaluate("document.querySelector('.pagination-container > button:last-child')?.disabled")->getReturnValue() ?? true);
+            return false;
+        }
     }
 }

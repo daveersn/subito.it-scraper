@@ -6,6 +6,7 @@ use App\Models\BrowserSocket;
 use HeadlessChromium\Browser;
 use HeadlessChromium\BrowserFactory;
 use HeadlessChromium\Exception\BrowserConnectionFailed;
+use HeadlessChromium\Page;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class Scraper
@@ -87,6 +88,9 @@ class Scraper
         return $this;
     }
 
+    /**
+     * @param  callable(Page, Browser, BrowserSocket): mixed  $callback
+     */
     public function wrap(callable $callback): mixed
     {
         if (! $this->isConnected()) {

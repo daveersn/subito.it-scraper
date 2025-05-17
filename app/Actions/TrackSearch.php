@@ -53,10 +53,13 @@ class TrackSearch
                 $model = Item::make();
             }
 
+            // Convert BaseItem to array
+            $itemData = $item->except('price')->toArray();
+
             $model
                 ->fill(
                     array_merge(
-                        $item->except('price')->toArray(),
+                        $itemData,
                         ['tracked_search_id' => $search->getKey()]
                     ))
                 ->save();
